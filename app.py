@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi import APIRouter
 from Notebook import Notebook
 from models import *
@@ -19,39 +19,49 @@ app=FastAPI(
 #                    )
 
 @app.post("/myNotebook", response_model=NotebookCreate)
-def create_notebook(notebook: NotebookCreate):
+async def create_notebook(notebook: NotebookCreate):
 
     new_notebook = Notebook(name = notebook.name,
                             description=notebook.description)
-    cur.insert_one(new_notebook)
+    cur.execute("INSERT INTO notebook (name, description) VALUES (?, ?)",
+                [new_notebook.name, new_notebook.description])
     return NotebookResponse(
         id=new_notebook.id,
         name=new_notebook.name,
         description=new_notebook.description)
 
 @app.get("/myNotebook/{id}", response_model=NotebookCreate)
-def get_notebook(id: int):
+async def get_notebook(id: int):
 
 
-    new_notebook=cur.fetchone(id)
+    new_notebook=cur.execute("SELECT * FROM notebook WHERE id = ?", [id]).fetchone()
+    if new_notebook is None:
+        raise HTTPException(status_code=404, detail="Notebook not found")
     return NotebookResponse(
-        id=new_notebook.id,
-        name=new_notebook.name,
-        description=new_notebook.description)
+        id=new_notebook[0],
+        name=new_notebook[1],
+        description=new_notebook[2])
 
 
 @app.patch("/myNotebook/{id}", response_model=NotebookCreate)
-def update_notebook(id: int, notebook: NotebookCreate):
-    new_notebook = cur.fetchone(id)
-
+async def update_notebook(id: int, notebook: NotebookCreate):
+    new_notebook=cur.execute("SELECT * FROM notebook WHERE id = ?", [id]).fetchone()
+    if new_notebook is None:
+        raise HTTPException(status_code=404, detail="Notebook not found")
+    updated_notebook = NotebookUpdate(name=notebook.name, description=notebook.description)
+    cur.execute("UPDATE notebook SET name = ?, description = ? WHERE id = ?", 
+                [updated_notebook.name, updated_notebook.description, id])
     return NotebookResponse(
-        id = new_notebook.id,
+        id=id,
         name=new_notebook.name,
         description=new_notebook.description)
 
 
 @app.delete("/myNotebook/{id}")
-def delete_notebook(id: int):
+async def delete_notebook(id: int):
+    new_notebook=cur.execute("SELECT * FROM notebook WHERE id = ?", [id]).fetchone()
+    if new_notebook is None:
+        raise HTTPException(status_code=404, detail="Notebook not found")
     cur.execute("DELETE FROM notebook WHERE id = ?", [id])
     return "ok"
 

@@ -48,13 +48,12 @@ async def update_notebook(id: int, notebook: NotebookCreate):
     new_notebook=cur.execute("SELECT * FROM notebook WHERE id = ?", [id]).fetchone()
     if new_notebook is None:
         raise HTTPException(status_code=404, detail="Notebook not found")
-    updated_notebook = NotebookUpdate(name=notebook.name, description=notebook.description)
     cur.execute("UPDATE notebook SET name = ?, description = ? WHERE id = ?", 
-                [updated_notebook.name, updated_notebook.description, id])
+                [notebook.name, notebook.description, id])
     return NotebookResponse(
         id=id,
-        name=new_notebook.name,
-        description=new_notebook.description)
+        name=notebook.name,
+        description=notebook.description)
 
 
 @app.delete("/myNotebook/{id}")
